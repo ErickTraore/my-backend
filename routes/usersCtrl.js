@@ -1,7 +1,10 @@
 // Définition des fonctions pour les routes relatives aux utilisateurs
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const jwtUtils = require('../utils/jwt.utils');
 const models = require('../models');
+
+const EMAIL_REGEX = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+const PASSWORD_REGEX = /^(?=.*\d).{4,8}$/;
 
 console.log("Je suis dans le fichier usersCtrl.js");
 console.log(models.User);
@@ -17,7 +20,14 @@ module.exports = {
             console.log(req.body.email);
             return res.status(400).json({ 'error': 'Paramètres manquants' });
         }
-
+        // Vérification de l'adresse e-mail
+        if (!EMAIL_REGEX.test(email)) {
+            return res.status(400).json({ 'error': 'Adresse e-mail invalide' });
+        }
+        // Vérification du mot de passe
+        if (!PASSWORD_REGEX.test(password)) {
+            return res.status(400).json({ 'error': 'Le mot de passe doit contenir entre 4 et 8 caractères et inclure au moins un chiffre' });
+        }
         // Recherche de l'utilisateur dans la base de données
         models.User.findOne({
             attributes: ['email'],
@@ -57,10 +67,35 @@ module.exports = {
             });
     },
     login: function(req, res) {
-        const { email, password } = req.body;
-        const user = { email, password };
-        const token = jwt.sign({ id: 1 }, 'secretkey');
+        const email = req.body.email;
+        const password = req.body.password;
 
-        // Implémentez la logique de connexion ici
-    }
-};
+          // Vérification des paramètres manquants
+          if (email === '' || password === '') {
+            console.log(req.body.email);
+            return res.status(400).json({ 'error': 'Paramètres manquants' });
+        }
+        models.User.findOne({
+            where: { email: email }
+        })
+            .then(function(userFound) {
+                if (userFound) {
+                    // Comparaison du mot de passe haché avec le mot de passe fourni
+                    bcrypt.compare(password, userFound.password, function(errBycrypt, resBycrypt) {
+                        if (resBycrypt) {
+                            return res.status(200).json({
+                                'userId': userFound.id,
+                                'token': jwtUtils.generateTokenForUser(userFound)
+                            });
+                        } else {
+                            return res.status(403).json({ 'error': 'Mot de passe invalide' });
+                        }
+                    });
+                } else {
+                    return res.status(404).json({ 'error': 'Utilisateur non trouvé' });
+                }
+            })
+            .catch(function(err) {
+                return res.status(500).json({ 'error': 'Impossible de vérifier l\'utilisateur' });
+    })
+}};
