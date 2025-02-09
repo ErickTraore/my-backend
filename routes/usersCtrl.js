@@ -69,50 +69,15 @@ module.exports = {
         ], function(newUser) {
             if (newUser) {
                 return res.status(201).json({
-                    'userId': newUser.id
+                    'userId': newUser.id,
+                    'message': 'Inscription réussie, redirection vers la page de connexion...',
+                    'redirectUrl': '/#login'
                 });
             } else {
                 return res.status(500).json({ 'error': 'Impossible d\'ajouter l\'utilisateur' });
             }
         });
 
-        // Recherche de l'utilisateur dans la base de données
-        models.User.findOne({
-            attributes: ['email'],
-            where: { email: email }
-        })
-            .then(function(userFound) {
-                // Si l'utilisateur n'est pas trouvé, création d'un nouvel utilisateur
-                if (!userFound) {
-                    // Hachage du mot de passe
-                    bcrypt.hash(password, 5, function(err, bcryptedPassword) {
-                        const newUser = models.User.create({
-                            email: email,
-                            bio: bio,
-                            password: bcryptedPassword,
-                            isAdmin: 0
-                        })  
-                        .then(function(newUser) {
-                            // Envoi de la réponse avec l'ID de l'utilisateur créé
-                            return res.status(201).json({
-                                'userId': newUser.id
-                            });
-                        })
-                        .catch(function(err) {
-                            // Envoi d'une erreur en cas d'échec de la création de l'utilisateur
-                            return res.status(500).json({ 'error': 'Impossible d\'ajouter l\'utilisateur' });
-                        });
-                    });
-                } else {
-                    // Envoi d'une erreur en cas d'utilisateur existant
-                    return res.status(500).json({ 'error': 'L\'utilisateur existe déjà' });
-                }
-            })
-            .catch(function(err) {
-                // Envoi d'une erreur en cas d'échec de la base de données
-                console.log(req.body.email);
-                return res.status(500).json({ 'error': 'Erreur de base de données:page usersCtrl' });
-            });
     },
     login: function(req, res) {
         const email = req.body.email;
@@ -133,7 +98,8 @@ module.exports = {
                         if (resBycrypt) {
                             return res.status(200).json({
                                 'userId': userFound.id,
-                                'token': jwtUtils.generateTokenForUser(userFound)
+                                'token': jwtUtils.generateTokenForUser(userFound),
+                                'redirectUrl': '/#contact',
                             });
                         } else {
                             return res.status(403).json({ 'error': 'Mot de passe invalide' });
@@ -168,6 +134,46 @@ module.exports = {
         res.status(500).json({ 'error': 'Impossible de récupérer l\'utilisateur' });
     });
 
-},
+    },
+    updateUserProfile: function(req, res) {
+        // Récupération de l'en-tête d'autorisation
+        const headerAuth = req.headers['authorization'];
+        const userId = jwtUtils.getUserId(headerAuth);
+
+        // Paramètres
+        const bio = req.body.bio;
+
+        asyncLib.waterfall([
+            function(done) {
+                models.User.findOne({
+                    attributes: ['id', 'bio'],
+                    where: { id: userId }
+                }).then(function (userFound) {
+                    done(null, userFound);
+                }).catch(function(err) {
+                    return res.status(500).json({ 'error': 'Impossible de vérifier l\'utilisateur' });
+                });
+            },
+            function(userFound, done) {
+                if (userFound) {
+                    userFound.update({
+                        bio: (bio ? bio : userFound.bio)
+                    }).then(function() {
+                        done(userFound);
+                    }).catch(function(err) {
+                        res.status(500).json({ 'error': 'Impossible de mettre à jour l\'utilisateur' });
+                    });
+                } else {
+                    res.status(404).json({ 'error': 'Utilisateur non trouvé' });
+                }
+            },
+        ], function(userFound) {
+            if (userFound) {
+                return res.status(201).json(userFound);
+            } else {
+                return res.status(500).json({ 'error': 'Impossible de mettre à jour l\'utilisateur' });
+            }
+        });
+    }
 
 };
