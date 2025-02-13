@@ -8,5 +8,9 @@ module.exports = (sequelize) => {
     isAdmin: Sequelize.BOOLEAN,
   });
 
+  User.associate = (models) => {
+    User.hasMany(models.Message, { foreignKey: 'userId' });
+  };
+
   return User;
 };

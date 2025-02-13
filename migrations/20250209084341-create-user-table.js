@@ -15,6 +15,7 @@ module.exports = {
         unique: true
       },
       bio: {
+        allowNull: true,
         type: Sequelize.TEXT
       },
       password: {

@@ -1,11 +1,11 @@
 const Sequelize = require('sequelize');
 
-// Configurer Sequelize pour se connecter à MySQL
 const sequelize = new Sequelize('database_development', 'root', '@Erick2691', {
   host: 'localhost',
   dialect: 'mysql',
-  logging: false, // Désactiver la journalisation si nécessaire
+  logging: false,
 });
+
 sequelize.authenticate()
 .then(() => {
   console.log('Connexion à la base de données réussie: page index.js');
@@ -13,18 +13,22 @@ sequelize.authenticate()
 .catch((err) => {
   console.error('Échec de la connexion à la base de données :', err);
 });
-// Importation des modèles
-const User = require('./user')(sequelize);
 
-// Synchronisation des modèles avec la base de données
+const User = require('./user')(sequelize, Sequelize.DataTypes);
+const Message = require('./message')(sequelize, Sequelize.DataTypes);
+
+// Définir les associations
+User.associate({ Message });
+Message.associate({ User });
+
 sequelize.sync()
   .then(() => console.log('Base de données synchronisée'))
   .catch(err => console.error('Erreur de synchronisation', err));
 
-// Exportation de sequelize et des modèles
 module.exports = {
   sequelize,
   User,
+  Message,
 };
 
 
