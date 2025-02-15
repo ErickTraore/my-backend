@@ -16,10 +16,12 @@ module.exports = {
         const userId = jwtUtils.getUserId(headerAuth);
         console.log('Extracted userId:', userId);
     
-        const content = req.body.content;
-        const tittle = req.body.tittle;
+        const { content, tittle, image, video } = req.body;
+        
         console.log('Extracted content:', content);
         console.log('Extracted tittle:', tittle);
+        console.log('Extracted image:', image);
+        console.log('Extracted video:', video);
         console.log('Extracted content.length:', content.length);
         console.log('Extracted tittle.length:', tittle.length);
     
@@ -55,7 +57,9 @@ module.exports = {
                         tittle: tittle,
                         content: content,
                         userId: userFound.id,
-                        likes: 0
+                        likes: 0,
+                        image: image,
+                        video: video
                     })
                      .then(function (newMessage) {
                         done(null, newMessage);
